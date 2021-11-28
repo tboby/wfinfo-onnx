@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -20,6 +21,7 @@ namespace WFInfo_onnx
             Console.WriteLine("Hello World!");
             var image = LoadImage("testfiles/test3.png");
             var result = Run(image);
+            var parsed = ParseResults(result);
             Console.WriteLine(result);
         }
         public static IEnumerable<float> Run(DenseTensor<float> inputTensor)
@@ -48,24 +50,111 @@ namespace WFInfo_onnx
             return inferenceResult;
         }
 
+        public static string ParseResults(IEnumerable<float> output)
+        {
+            //chunk output into pieces of 97
+            var chunks = output.Select(Convert.ToDouble).Chunk(97);
+            var softmaxed = chunks.Select(SoftMax);
+            var normalised = softmaxed.Select(doubles => doubles.Select(y => y / doubles.Sum()));
+            // var indexed = normalised.Select(x => x.Select(y => x.));
+            return GreedyParse(normalised.First(), 97);
+            // return "";
+        }
+
+        public static string GreedyParse(IEnumerable<double> input, int length)
+        {
+            var text_index = input.ToArray();
+            var rest =
+                "0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ €ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+                    .Select(c => c.ToString());
+            var characters = rest.Prepend("[blank]");
+            var ignore_idx = new int[] { 0 };
+            var texts = new List<string>();
+            var index = 0;
+            for (int l = 0; l < length; l++)
+            {
+                var t = text_index[index..(index + 1)];
+            }
+
+            return "";
+
+        }
+        public static IEnumerable<double> SoftMax(IEnumerable<double> input)
+        {
+            var z_exp = input.Select(Math.Exp);
+            // [2.72, 7.39, 20.09, 54.6, 2.72, 7.39, 20.09]
+
+            var sum_z_exp = z_exp.Sum();
+            // 114.98
+
+            var softmax = z_exp.Select(i => i / sum_z_exp);
+            // [0.024, 0.064, 0.175, 0.475, 0.024, 0.064, 0.175]
+
+            return softmax;
+
+        }
+
+        public static Mat ResizeImage(Mat image, int imgH, int imgW)
+        {
+            var w = image.Width;
+            var h = image.Height;
+
+            var ratio = w / (double)h;
+            int resizedW = 0;
+            if (Math.Ceiling(imgH * ratio) > imgW)
+            {
+                resizedW = imgW;
+            }
+            else
+            {
+                resizedW = (int)Math.Ceiling(imgH * ratio);
+            }
+
+            var resized_image = image.Resize(new Size(resizedW, imgH), interpolation: InterpolationFlags.Cubic);
+            return resized_image;
+        }
+
         public static DenseTensor<float> LoadImage(string path)
         {
             var image = OpenCvSharp.Cv2.ImRead(path, ImreadModes.Grayscale);
 
             var targetHeight = 64;
             var maxWidth = 300;
+            // var image2 = new Mat();
+            // image.ConvertTo(image2, MatType.CV_8S);
 
-            var width = image.Width;
-            var height = image.Height;
+            var image2 = ResizeImage(image, targetHeight, maxWidth);
+
+            // image = image.Subtract(0.5).Divide(0.5);
+            // image = image.Resize(new Size(maxWidth, targetHeight), interpolation: InterpolationFlags.Linear);
+
+            var width = image2.Width;
+            var height = image2.Height;
+            // var width = maxWidth;
+            // var height = targetHeight;
             var data = new DenseTensor<float>(new[] { 1, 1, width, height});
 
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    data[0, 0, x, y] = image.Get<float>(x, y);
+                    // var f = ((image2.Get<byte>(x, y) / 255.0f) - 0.5f) / 0.5f;
+                    data[0, 0, x, y] = image2.Get<byte>(x, y);
                 }
             }
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    data[0, 0, x, y] = ((data[0, 0, x, y] / 255.0f) - 0.5f) / 0.5f;
+                }
+                
+            }
+           
+            
+            
+            
 
             return data;
 
