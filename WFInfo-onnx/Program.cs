@@ -16,6 +16,7 @@ namespace WFInfo_onnx
 {
     class Program
     {
+        public static Mat _hold;
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
@@ -56,12 +57,12 @@ namespace WFInfo_onnx
             var chunks = output.Select(Convert.ToDouble).Chunk(97);
             var softmaxed = chunks.Select(SoftMax);
             var normalised = softmaxed.Select(doubles => doubles.Select(y => y / doubles.Sum()));
-            // var indexed = normalised.Select(x => x.Select(y => x.));
-            return GreedyParse(normalised.First(), 97);
+            var indexed = normalised.Select(row => row.ToList().IndexOf(row.Max()));
+            return GreedyParse(indexed, 97);
             // return "";
         }
 
-        public static string GreedyParse(IEnumerable<double> input, int length)
+        public static string GreedyParse(IEnumerable<int> input, int length)
         {
             var text_index = input.ToArray();
             var rest =
@@ -114,6 +115,17 @@ namespace WFInfo_onnx
             return resized_image;
         }
 
+        public static Mat NormalizePad(Mat image, int imgH, int imgW)
+        {
+            // var image3 = new Mat();
+            // image.ConvertTo(image3, MatType.CV_32F);
+            var image4 = image.Divide(255.0);
+            image4.ToMat().SaveImage("out4.png");
+            var image5 = image4.Subtract(0.5).Divide(0.5).ToMat();
+            image5.Multiply(255.0).ToMat().SaveImage("out5.png");
+            
+            return image5.CopyMakeBorder(0, 0, 0, imgW - image5.Width, BorderTypes.Replicate);
+        }
         public static DenseTensor<float> LoadImage(string path)
         {
             var image = OpenCvSharp.Cv2.ImRead(path, ImreadModes.Grayscale);
@@ -125,11 +137,21 @@ namespace WFInfo_onnx
 
             var image2 = ResizeImage(image, targetHeight, maxWidth);
 
+            image.SaveImage("out1.png");
+            image2.SaveImage("out2.png");
             // image = image.Subtract(0.5).Divide(0.5);
             // image = image.Resize(new Size(maxWidth, targetHeight), interpolation: InterpolationFlags.Linear);
+            var image3 = new Mat();
+            image2.ConvertTo(image3, MatType.CV_32F);
+            // image3.SaveImage("out3.png");
+            // var image4 = image3.Divide(255).Subtract(0.5).Divide(0.5).ToMat();
+            var image4 = NormalizePad(image3,targetHeight, maxWidth);
 
-            var width = image2.Width;
-            var height = image2.Height;
+            _hold = image4; 
+            // var tempOut = image4.Multiply(255).ToMat();
+            // tempOut.SaveImage("testout.png");
+            var width = image4.Width;
+            var height = image4.Height;
             // var width = maxWidth;
             // var height = targetHeight;
             var data = new DenseTensor<float>(new[] { 1, 1, width, height});
@@ -138,19 +160,18 @@ namespace WFInfo_onnx
             {
                 for (int x = 0; x < width; x++)
                 {
-                    // var f = ((image2.Get<byte>(x, y) / 255.0f) - 0.5f) / 0.5f;
-                    data[0, 0, x, y] = image2.Get<byte>(x, y);
+                    data[0, 0, x, y] = image4.Get<float>(x, y);
                 }
             }
-
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    data[0, 0, x, y] = ((data[0, 0, x, y] / 255.0f) - 0.5f) / 0.5f;
-                }
-                
-            }
+            //
+            // for (int y = 0; y < height; y++)
+            // {
+            //     for (int x = 0; x < width; x++)
+            //     {
+            //         data[0, 0, x, y] = ((data[0, 0, x, y] / 255.0f) - 0.5f) / 0.5f;
+            //     }
+            //     
+            // }
            
             
             
