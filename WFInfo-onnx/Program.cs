@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
@@ -20,10 +21,16 @@ namespace WFInfo_onnx
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
-            var image = LoadImage("testfiles/test3.png");
+            var timer = new Stopwatch();
+            var image = LoadImage("testfiles/testa.png");
+            timer.Start();
             var result = Run(image);
+            result = Run(image);
+            result = Run(image);
+            result = Run(image);
             var parsed = ParseResults(result);
             Console.WriteLine(parsed);
+            Console.WriteLine(timer.ElapsedMilliseconds);
         }
         public static IEnumerable<float> Run(DenseTensor<float> inputTensor)
         {
