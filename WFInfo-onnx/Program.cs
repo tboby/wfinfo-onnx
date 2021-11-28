@@ -119,10 +119,20 @@ namespace WFInfo_onnx
         {
             // var image3 = new Mat();
             // image.ConvertTo(image3, MatType.CV_32F);
-            var image4 = image.Divide(255.0);
-            image4.ToMat().SaveImage("out4.png");
+            // image.SaveImage("outa.png");
+            var image4 = image.Divide(255.0).ToMat();
+            // image4.Subtract(0.5);
+            // var tempOut = new Mat();
+            // var temp = image4.Subtract(0.5).Multiply(255).ToMat().CopyTo(tempOut, MatType.CV_8UC1);
+            // Cv2.ImWrite("outy.png", tempOut);
+            // image4.Subtract(0.5).Multiply(255.0).ToMat().SaveImage("outx.png");
+            // var image5 = image4.Subtract(0.5).Divide(0.5).ToMat();
             var image5 = image4.Subtract(0.5).Divide(0.5).ToMat();
-            image5.Multiply(255.0).ToMat().SaveImage("out5.png");
+            
+            // var tempOut = new Mat();
+            // image5.Multiply(255.0).ToMat().ConvertTo(tempOut, MatType.CV_8UC1);
+            // Cv2.ImWrite("outfinal2.png", tempOut);
+            // image5.Multiply(255.0).ToMat().SaveImage("out5.png");
             
             return image5.CopyMakeBorder(0, 0, 0, imgW - image5.Width, BorderTypes.Replicate);
         }
@@ -142,11 +152,14 @@ namespace WFInfo_onnx
             // image = image.Subtract(0.5).Divide(0.5);
             // image = image.Resize(new Size(maxWidth, targetHeight), interpolation: InterpolationFlags.Linear);
             var image3 = new Mat();
-            image2.ConvertTo(image3, MatType.CV_32F);
+            image2.ConvertTo(image3, MatType.CV_32FC1);
             // image3.SaveImage("out3.png");
             // var image4 = image3.Divide(255).Subtract(0.5).Divide(0.5).ToMat();
             var image4 = NormalizePad(image3,targetHeight, maxWidth);
 
+            // var tempOut = new Mat();
+            // image4.Multiply(255).ToMat().ConvertTo(tempOut, MatType.CV_8U);
+            // Cv2.ImWrite("outfinal.png", tempOut);
             _hold = image4; 
             // var tempOut = image4.Multiply(255).ToMat();
             // tempOut.SaveImage("testout.png");
@@ -154,13 +167,13 @@ namespace WFInfo_onnx
             var height = image4.Height;
             // var width = maxWidth;
             // var height = targetHeight;
-            var data = new DenseTensor<float>(new[] { 1, 1, width, height});
+            var data = new DenseTensor<float>(new[] { 1, 1, height, width});
 
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    data[0, 0, x, y] = image4.Get<float>(x, y);
+                    data[0, 0, y, x] = image4.Get<float>(y, x);
                 }
             }
             //
