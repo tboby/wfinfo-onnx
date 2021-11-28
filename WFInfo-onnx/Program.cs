@@ -23,7 +23,7 @@ namespace WFInfo_onnx
             var image = LoadImage("testfiles/test3.png");
             var result = Run(image);
             var parsed = ParseResults(result);
-            Console.WriteLine(result);
+            Console.WriteLine(parsed);
         }
         public static IEnumerable<float> Run(DenseTensor<float> inputTensor)
         {
@@ -72,12 +72,14 @@ namespace WFInfo_onnx
             var ignore_idx = new int[] { 0 };
             var texts = new List<string>();
             var index = 0;
-            for (int l = 0; l < length; l++)
-            {
-                var t = text_index[index..(index + 1)];
-            }
+            var filtered = input.Where(x => !ignore_idx.Contains(x));
+            var chars = filtered.Select(x => rest.ElementAt(x-1));
+            return string.Join("", chars);
+            // for (int l = 0; l < length; l++)
+            // {
+                // var t = text_index[index..(index + 1)];
+            // }
 
-            return "";
 
         }
         public static IEnumerable<double> SoftMax(IEnumerable<double> input)
